@@ -242,6 +242,3 @@ function convertBedfile(chr::SnpArray, datafolder::AbstractString,bedfile::Abstr
     return X,y
 end
 
-
-
-

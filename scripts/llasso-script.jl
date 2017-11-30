@@ -50,8 +50,7 @@ info("Cleaning up data for penalized likelihood")
 ## with the best lambda.
 ## For chromosome 22, we have 45k common variants, so we can convert the
 ## whole SnpArray
-X,y = convertBedfile(chr, datafolder,bedfile)
-
+X,y = convertBedfile(chr, datafolder,bedfile);
 
 df = DataFrame()
 ## now we run Lasso.jl, which will fit by default 100 models
@@ -68,9 +67,11 @@ if(resL)
     if(length(ind)>1)
         ind = ind[end]
     end
-    betaL = fall.coefs[:,ind]
+    betaL = convert(Array,fall.coefs[:,ind])
+    betaL = betaL[:,]
     lambdaL = fall.λ[ind][1]
     interceptL = fall.b0[ind][1]
+    unshift!(betaL,interceptL)
     ## writing output
     yy = convert(Array,betaL)
     df[:betaL] = yy[:,1]
@@ -96,15 +97,15 @@ catch
     resSR = false
 end
 ## we need here beta, lambda, intercept from SR
-betaSR = sall.β[2:end]
+## we keep intercept in beta to save this way
+betaSR = sall.β
 lambdaSR = bestlSR[1]
-interceptSR = sall.β[1]
 ## writing output
 yy = convert(Array,betaSR)
 df[:betaSR] = yy[:,1]
 writetable(outfile,df)
 f = open(logfile,"a")
-write(f,string("\nLASSO implementation of best lambda with SparseRegression.jl\nlambda = ",lambdaSR[1],"\nintercept = ",interceptSR[1],"\nEstimated betas in file ",outfile))
+write(f,string("\nLASSO implementation of best lambda with SparseRegression.jl\nlambda = ",lambdaSR[1],"\nintercept = ",betaSR[1],"\nEstimated betas in file ",outfile))
 close(f)
 
 @save string(bedfile,"-llasso.jld")
@@ -122,11 +123,17 @@ try
 catch
     success = false
 end
-m = min(sum(beta_hatL .!= 0)-1, sum(beta_hatSR .!= 0)-1)
+if(success)
+    f = open(logfile,"a")
+    write(f,"\n")
+    write(f,string(cvout))
+    close(f)
+end
+m = min(sum(betaL .!= 0)-1, sum(betaSR .!= 0)-1)
 df0 = DataFrame()
 for i in 1:m
     output = @time L0_log(X2, y, i)
-    df0[Symbol(eval(string("IHT",i)))] = output.beta[2:end]
+    df0[Symbol(eval(string("IHT",i)))] = output.beta
 end
 
 ## writing output to file --------------------------------------------
@@ -140,13 +147,11 @@ writetable(outfile,df)
 # @rput y
 # if(resL)
 #     beta_hatL = convert(Array,betaL)[:,1]
-#     unshift!(beta_hatL,interceptL)
 #     @rput beta_hatL
 #     @rput lambdaL
 # end
 # if(resSR)
 #     beta_hatSR = convert(Array,betaSR)[:,1]
-#     unshift!(beta_hatSR,interceptSR)
 #     @rput beta_hatSR
 #     @rput lambdaSR
 # end
