@@ -1,8 +1,9 @@
 # To do
-  - leave llasso-script running in HGCC
+  - test llasso-submit.sh
   - create new bed files (with plink, or julia? maybe plink to do it just once with mike's list of IDs) keeping only caucasian
+  - modify the scripts so that they take a number (the chromosome) as input
   - run julia script for all chromosomes: parallelize
-  - check with rich/jay how to identify in which genes the significant SNPs are
+  - check with rich/jai how to identify in which genes the significant SNPs are
   - we need to add confounding covariates at some point: sex, age? not sure, as they are not significant
 
 Later:
@@ -68,7 +69,49 @@ I have done this, but I keep getting the same error. In [this issue](https://git
 ```
 the solution was to rebuild the R installation with --enable-R-shlib and to add $R_HOME/lib to the LD_LIBRARY_PATH.
 ```
-So, I need to open another HGCC ticket. We are waiting for this.
+So, I need to open another HGCC ticket. We are waiting for this. It was fixed by changing the version of R (needed 3.4+). It is ok that the two scripts are separated, but I will run `llasso-post-sel-preparation.jl` inside `llasso-script.jl`.
 
-### Running script without RCall
-We modified `llasso-script.jl` to eliminate the part with `RCall`.
+So, we need to copy all the scripts to HGCC and the data:
+```shell
+ssh csolislemus@hgcc.genetics.emory.edu
+mkdir 22q
+
+cd Dropbox/Documents/gwas/projects/22q_new/llasso/scripts/
+scp *.jl csolislemus@hgcc.genetics.emory.edu:/home/csolislemus/22q
+```
+We also need to copy the data:
+```shell
+cd Documents/gwas/data/22q/22q_files_NEW/bedfiles
+ls
+##22q-chr22.bed 22q-chr22.bim 22q-chr22.fam
+scp * csolislemus@hgcc.genetics.emory.edu:/home/csolislemus/22q
+```
+Finally, we need to change the paths in the script to assume that everything is in the same folder.
+
+Now we need to create the bash script for the job submission SGE: `llasso-submit.sh`. We need to copy it:
+```
+cd Dropbox/Documents/gwas/projects/22q_new/llasso/scripts/
+scp *.jl csolislemus@hgcc.genetics.emory.edu:/home/csolislemus/22q
+```
+
+
+
+
+# Later when we do the interpretation
+We might need the R package for Manhattan plot: `qqnan`, and the code that I did for Jai. The function needs BP to be in the order position in each chromosome. Info [here](http://www.gettinggeneticsdone.com/2014/05/qqman-r-package-for-qq-and-manhattan-plots-for-gwas-results.html )
+```
+dat = read.table("results/OptimalSortSkatWChrPos.txt",sep="\t")
+dat2 = subset(dat,select=c("V2","V1","V4"))
+names(dat2) = c("SNP","CHR","P")
+str(dat2)
+
+dat.ord = data.frame()
+
+for(i in 1:max(dat2$CHR)){
+  dat.chr = subset(dat2,CHR==i)
+  dat.chr = within(dat.chr,BP<-order(dat.chr$SNP))
+  str(dat.chr)
+  dat.chr = dat.chr[order(dat.chr$BP),]
+  dat.ord = rbind(dat.ord, dat.chr)
+}
+``
