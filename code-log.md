@@ -1,7 +1,6 @@
 # To do
-  - test llasso-submit.sh
-  - create new bed files (with plink, or julia? maybe plink to do it just once with mike's list of IDs) keeping only caucasian
-  - modify the scripts so that they take a number (the chromosome) as input
+  - wait for current script, check that all output files are perfect
+  - modify the scripts so that they take a number (the chromosome) as input: make sure not to delete *.fam and so because there could still be jobs running, only do this in the post process; also copy the caucasian data (modify scripts to read this new data); also add the option to receive an email when script is done
   - run julia script for all chromosomes: parallelize
   - check with rich/jai how to identify in which genes the significant SNPs are
   - we need to add confounding covariates at some point: sex, age? not sure, as they are not significant
@@ -70,8 +69,9 @@ I have done this, but I keep getting the same error. In [this issue](https://git
 the solution was to rebuild the R installation with --enable-R-shlib and to add $R_HOME/lib to the LD_LIBRARY_PATH.
 ```
 So, I need to open another HGCC ticket. We are waiting for this. It was fixed by changing the version of R (needed 3.4+). It is ok that the two scripts are separated, but I will run `llasso-post-sel-preparation.jl` inside `llasso-script.jl`.
+This was fixed by updating R to 3.4.
 
-So, we need to copy all the scripts to HGCC and the data:
+Now, we need to copy all the scripts to HGCC and the data:
 ```shell
 ssh csolislemus@hgcc.genetics.emory.edu
 mkdir 22q
@@ -91,11 +91,53 @@ Finally, we need to change the paths in the script to assume that everything is 
 Now we need to create the bash script for the job submission SGE: `llasso-submit.sh`. We need to copy it:
 ```
 cd Dropbox/Documents/gwas/projects/22q_new/llasso/scripts/
-scp *.jl csolislemus@hgcc.genetics.emory.edu:/home/csolislemus/22q
+scp llasso-submit.sh csolislemus@hgcc.genetics.emory.edu:/home/csolislemus/22q
 ```
 
+Now we can give it a try
+```shell
+ssh csolislemus@hgcc.genetics.emory.edu
+qsub -q b.q -cwd -j y 22q/llasso-submit.sh
+##Your job 240967 ("llasso-submit.sh") has been submitted
+```
+Note that we cannot copy and paste into the terminal, we need to type it, otherwise we get the error:
+`Unable to read script file because of error: error opening –q: No such file or directory`
 
+However, the job does not appear when doing `qstat`, and there are a bunch of errors:
+```
+/bin/mktemp: too many templates
+Try '/bin/mktemp --help' for more information.
+cp: target ‘/home/csolislemus/22q/llasso-submit.sh’ is not a directory
+ERROR: could not open file /mnt/icebreaker/data2/home/csolislemus/llasso-script.jl
+Stacktrace:
+ [1] include_from_node1(::String) at ./loading.jl:569
+ [2] include(::String) at ./sysimg.jl:14
+ [3] process_options(::Base.JLOptions) at ./client.jl:305
+ [4] _start() at ./client.jl:371
+/bin/rm: cannot remove ‘/*.fam’: No such file or directory
+/bin/rm: cannot remove ‘/*.bim’: No such file or directory
+/bin/rm: cannot remove ‘/*.bed’: No such file or directory
+rsync: link_stat "/mnt/icebreaker/data2/home/csolislemus/–av" failed: No such file or directory (2)
+skipping directory .
+rsync error: some files/attrs were not transferred (see previous errors) (code 23) at main.c(1052) [sender=3.0.9]
+/bin/rm: cannot remove ‘–fr’: No such file or directory
+```
 
+The problem is that it cannot create the tmp folder.
+It turns out that it was a hidden character in the submit file from copying from the slides. I had to rewrite the whole `llasso-submit.sh` and will copy again to HGCC:
+```
+cd Dropbox/Documents/gwas/projects/22q_new/llasso/scripts/
+scp llasso-submit.sh csolislemus@hgcc.genetics.emory.edu:/home/csolislemus/22q
+```
+
+So, we can give it another try:
+```shell
+ssh csolislemus@hgcc.genetics.emory.edu
+cd 22q
+qsub -q b.q -cwd -j y llasso-submit.sh
+##Your job 240976 ("llasso-submit.sh") has been submitted
+```
+It appears to be running now. Need to check back with `qstat`.
 
 # Later when we do the interpretation
 We might need the R package for Manhattan plot: `qqnan`, and the code that I did for Jai. The function needs BP to be in the order position in each chromosome. Info [here](http://www.gettinggeneticsdone.com/2014/05/qqman-r-package-for-qq-and-manhattan-plots-for-gwas-results.html )

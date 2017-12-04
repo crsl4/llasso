@@ -11,9 +11,9 @@ PRJDIR="${HOME}/22q"
 #OUTDIR="${PRJDIR}/output/FastQC"
 
 if [ -e /bin/mktemp ]; then
-	TMPDIR=`/bin/mktemp –d /scratch/csolisl-22q`
+	TMPDIR=`/bin/mktemp -d /scratch/XXXXXX`
 elif [ -e /usr/bin/mktemp ]; then
-	TMPDIR=`/usr/bin/mktemp –d /scratch/csolisl-22q`
+	TMPDIR=`/usr/bin/mktemp -d /scratch/XXXXXX`
 else
 	echo "Error. Cannot find program to create tmp directory"
 	exit
@@ -28,9 +28,9 @@ julia llasso-script.jl
 /bin/rm ${TMPDIR}/*.bim
 /bin/rm ${TMPDIR}/*.bed
 
-rsync –av ${TMPDIR}/ ${PRJDIR}
+rsync -av ${TMPDIR}/ ${PRJDIR}
 
-/bin/rm –fr ${TMPDIR}
+/bin/rm -fr ${TMPDIR}
 
 module unload R
 module unload julia

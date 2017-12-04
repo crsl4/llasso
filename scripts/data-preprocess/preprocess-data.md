@@ -159,3 +159,79 @@ We cannot compare the two matrices, because we cannot convert the DataFrame into
 
 Since we can import data into Julia directly from the bed files, we don't need the raw files anymore (and they are heavy ~70Gb). I will delete the rawfiles as well.
 Now, we have the input dataset. We need the model. See `llasso-model.jmd`.
+
+# Using sample of europeans only
+We will test llasso method with a sample of europeans only (because we do not want to include the PCs as population structure, actually we cannot include any covariates because of the penalization).
+
+We need the first two columns of `22q_caucasians_outliers_removed.cov` which has the IDs of the caucasian individuals.
+```shell
+cd Dropbox/Documents/gwas/projects/22q_new/caucasian-ind
+cut -d' ' -f1-2 22q_caucasian_outliers_removed.cov > 22q_caucasian_id.txt
+cp 22q_caucasian_id.txt ~/Documents/gwas/data/22q/22q_files_NEW/bedfiles
+```
+
+Now that we have the IDs to keep, we run:
+```shell
+cd Documents/gwas/data/22q/22q_files_NEW/
+plink --bfile justfinalset/22q_all_dropped_519_pruned --keep 22q_caucasian_id.txt --make-bed --out 22q_caucasian
+
+PLINK v1.90b4.4 64-bit (21 May 2017)           www.cog-genomics.org/plink/1.9/
+(C) 2005-2017 Shaun Purcell, Christopher Chang   GNU General Public License v3
+Logging to 22q_caucasian.log.
+Options in effect:
+  --bfile justfinalset/22q_all_dropped_519_pruned
+  --keep 22q_caucasian_id.txt
+  --make-bed
+  --out 22q_caucasian
+
+8192 MB RAM detected; reserving 4096 MB for main workspace.
+30747425 variants loaded from .bim file.
+519 people (229 males, 290 females) loaded from .fam.
+519 phenotype values loaded from .fam.
+--keep: 435 people remaining.
+Using 1 thread (no multithreaded calculations invoked).
+Before main variant filters, 435 founders and 0 nonfounders present.
+Calculating allele frequencies... done.
+Warning: 48792 het. haploid genotypes present (see 22q_caucasian.hh ); many
+commands treat these as missing.
+Warning: Nonmissing nonmale Y chromosome genotype(s) present; many commands
+treat these as missing.
+Total genotyping rate in remaining samples is 0.996878.
+30747425 variants and 435 people pass filters and QC.
+Among remaining phenotypes, 214 are cases and 221 are controls.
+--make-bed to 22q_caucasian.bed + 22q_caucasian.bim + 22q_caucasian.fam ...
+done.
+
+mv 22q_caucasian* bedfiles/
+```
+
+Now, we want to extract one chromosome at a time (again):
+```shell
+cd Documents/gwas/data/22q/22q_files_NEW/bedfiles
+plink --bfile 22q_caucasian --chr 1 --make-bed --out 22q_caucasian-chr1
+
+PLINK v1.90b4.4 64-bit (21 May 2017)           www.cog-genomics.org/plink/1.9/
+(C) 2005-2017 Shaun Purcell, Christopher Chang   GNU General Public License v3
+Logging to 22q_caucasian-chr1.log.
+Options in effect:
+  --bfile 22q_caucasian
+  --chr 1
+  --make-bed
+  --out 22q_caucasian-chr1
+
+8192 MB RAM detected; reserving 4096 MB for main workspace.
+2394339 out of 30747425 variants loaded from .bim file.
+435 people (196 males, 239 females) loaded from .fam.
+435 phenotype values loaded from .fam.
+Using 1 thread (no multithreaded calculations invoked).
+Before main variant filters, 435 founders and 0 nonfounders present.
+Calculating allele frequencies... done.
+Total genotyping rate is 0.996494.
+2394339 variants and 435 people pass filters and QC.
+Among remaining phenotypes, 214 are cases and 221 are controls.
+--make-bed to 22q_caucasian-chr1.bed + 22q_caucasian-chr1.bim +
+22q_caucasian-chr1.fam ... done.
+```
+We do this for every chromosome, and then move the logfiles to log folder.
+
+We have the data ready now for the llasso script!
