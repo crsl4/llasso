@@ -1,5 +1,5 @@
 # To do
-  - wait for current script, check that all output files are perfect
+  - need to know if we can make JLD work, or not. If not, modify llasso-script to avoid JLD
   - modify the scripts so that they take a number (the chromosome) as input: make sure not to delete *.fam and so because there could still be jobs running, only do this in the post process; also copy the caucasian data (modify scripts to read this new data); also add the option to receive an email when script is done
   - run julia script for all chromosomes: parallelize
   - check with rich/jai how to identify in which genes the significant SNPs are
@@ -138,6 +138,31 @@ qsub -q b.q -cwd -j y llasso-submit.sh
 ##Your job 240976 ("llasso-submit.sh") has been submitted
 ```
 It appears to be running now. Need to check back with `qstat`.
+It ran without error, but no output files were produced. I will rerun without deleting the tmp folder, and then ask if it is possible to check if the files were produced in there.
+```shell
+hgcc:node00:[22q] % qsub -q b.q -cwd -j y llasso-submit.sh
+Your job 240979 ("llasso-submit.sh") has been submitted
+hgcc:node00:[22q] % qstat
+job-ID  prior   name       user         state submit/start at     queue                          slots ja-task-ID 
+-----------------------------------------------------------------------------------------------------------------
+ 240979 0.09375 llasso-sub csolislemus  r     12/04/2017 13:15:13 b.q@node09.local                   1 
+```
+Again, we do not have output files, and there are none in the scratch tmp file:
+```shell
+qlogin -q i.q@node09
+cd /scratch/
+node09:[scratch] % ls -l
+drwx------ 2 csolislemus    epsteinlab          4096 Dec  4 13:15 qfXh6c
+cd qfXh6c/
+ ```
+So, let's do a small test `test.jl` that only creates a data frame"
+```shell
+qsub -q b.q -cwd -j y test.sh
+```
+Everything works, and the test.csv file is created!
+
+So, I will run line by line the submit llasso-submit.sh, and see if there is any error. 
+`qlogin -q i.q`: node08. I think that the problem is that I do not have the package JLD. I am installing it now, but I am unable to because I need sudo permissions to install it.
 
 # Later when we do the interpretation
 We might need the R package for Manhattan plot: `qqnan`, and the code that I did for Jai. The function needs BP to be in the order position in each chromosome. Info [here](http://www.gettinggeneticsdone.com/2014/05/qqman-r-package-for-qq-and-manhattan-plots-for-gwas-results.html )
