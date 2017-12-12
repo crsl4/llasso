@@ -242,3 +242,13 @@ function convertBedfile(chr::SnpArray, datafolder::AbstractString,bedfile::Abstr
     return X,y
 end
 
+function allvarsformula(nms,resp::Symbol)
+    rpos = findfirst(nms,resp) ## response position
+    if iszero(rpos)
+        throw(ArgumentError("Symbol $resp is not in nms"))
+    end
+    rhs = :(+A) # an Expr that is a call to the + function
+    pop!(rhs.args) #remove the :A argument
+    append!(rhs.args, deleteat!(nms,rpos))
+    Formula(resp,rhs)
+end

@@ -1,7 +1,9 @@
 # To do
-  - need to know if we can make JLD work, or not. If not, modify llasso-script to avoid JLD
-  - modify the scripts so that they take a number (the chromosome) as input: make sure not to delete *.fam and so because there could still be jobs running, only do this in the post process; also copy the caucasian data (modify scripts to read this new data); also add the option to receive an email when script is done
-  - run julia script for all chromosomes: parallelize
+  - copy the llasso script to hgcc again, and modify path; copy covariates data too
+  - run a submit script test again (make sure to delete all previous output files)
+  - modify the scripts so that they take a number (the chromosome) as input, also copy the caucasian data (modify paths in scripts to read this new data); run julia script for all chromosomes: parallelize
+  - after this, copy back the scripts used and results
+
   - check with rich/jai how to identify in which genes the significant SNPs are
   - we need to add confounding covariates at some point: sex, age? not sure, as they are not significant
 
@@ -162,23 +164,42 @@ qsub -q b.q -cwd -j y test.sh
 Everything works, and the test.csv file is created!
 
 So, I will run line by line the submit llasso-submit.sh, and see if there is any error. 
-`qlogin -q i.q`: node08. I think that the problem is that I do not have the package JLD. I am installing it now, but I am unable to because I need sudo permissions to install it.
-
-# Later when we do the interpretation
-We might need the R package for Manhattan plot: `qqnan`, and the code that I did for Jai. The function needs BP to be in the order position in each chromosome. Info [here](http://www.gettinggeneticsdone.com/2014/05/qqman-r-package-for-qq-and-manhattan-plots-for-gwas-results.html )
+`qlogin -q i.q`: node08. I think that the problem is that I do not have the package JLD. I am installing it now, but I am unable to because I need sudo permissions to install it. Viren installed HDF5, so I will test again if I can install JLD.
+```shell
+ssh csolislemus@hgcc.genetics.emory.edu
+qlogin -q i.q
+module load julia
+julia
 ```
-dat = read.table("results/OptimalSortSkatWChrPos.txt",sep="\t")
-dat2 = subset(dat,select=c("V2","V1","V4"))
-names(dat2) = c("SNP","CHR","P")
-str(dat2)
+Perfect! I was able to install and use `JLD` package. So now we will check the `llasso-submit.sh` script line by line. This will be run with the old 22q chromosome 22 data.
 
-dat.ord = data.frame()
+We got an error:
+```
+ERROR: LoadError: LoadError: Could not find R installation. Either set the "R_HOME" environmental variable, or ensure the R executable is available in "PATH".
 
-for(i in 1:max(dat2$CHR)){
-  dat.chr = subset(dat2,CHR==i)
-  dat.chr = within(dat.chr,BP<-order(dat.chr$SNP))
-  str(dat.chr)
-  dat.chr = dat.chr[order(dat.chr$BP),]
-  dat.ord = rbind(dat.ord, dat.chr)
-}
-``
+ERROR: LoadError: LoadError: LoadError: Failed to precompile RCall to /home/csolislemus/.julia/lib/v0.6/RCall.ji.
+Stacktrace:
+ [1] compilecache(::String) at ./loading.jl:703
+ [2] _require(::Symbol) at ./loading.jl:490
+ [3] require(::Symbol) at ./loading.jl:398
+ [4] include_from_node1(::String) at ./loading.jl:569
+ [5] include(::String) at ./sysimg.jl:14
+ [6] include_from_node1(::String) at ./loading.jl:569
+ [7] include(::String) at ./sysimg.jl:14
+ [8] include_from_node1(::String) at ./loading.jl:569
+ [9] include(::String) at ./sysimg.jl:14
+ [10] process_options(::Base.JLOptions) at ./client.jl:305
+ [11] _start() at ./client.jl:371
+while loading /scratch/PoR0DJ/llasso-post-sel-functions.jl, in expression starting on line 4
+while loading /scratch/PoR0DJ/llasso-post-sel-preparation.jl, in expression starting on line 10
+while loading /scratch/PoR0DJ/llasso-script.jl, in expression starting on line 144
+```
+Could this be a problem with running things in a screen? Maybe. Let's start the shell submit script and see what we get. First, we save whatever output from this first trial in folder `test1` in `output/22q`.
+```shell
+ssh csolislemus@hgcc.genetics.emory.edu
+qsub -q b.q llasso-submit.sh
+## Your job 241199 ("llasso-submit.sh") has been submitted
+```
+and I have the same RCall error!
+
+So, I will modify the script to avoid the R part. Also, I will do the overfitting part (not great) of refitting a model only with the candidate SNPs (in lieu of the post selection). This is not great because we are using the same data, but we have so little data (~500) to begin with.

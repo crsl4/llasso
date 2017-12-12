@@ -22,7 +22,7 @@ fi
 cp ${PRJDIR}/* ${TMPDIR}
 cd ${TMPDIR}
 
-julia llasso-script.jl
+julia ${TMPDIR}/llasso-script.jl
 
 /bin/rm ${TMPDIR}/*.fam
 /bin/rm ${TMPDIR}/*.bim

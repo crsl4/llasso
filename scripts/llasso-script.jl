@@ -108,7 +108,7 @@ f = open(logfile,"a")
 write(f,string("\nLASSO implementation of best lambda with SparseRegression.jl\nlambda = ",lambdaSR[1],"\nintercept = ",betaSR[1],"\nEstimated betas in file ",outfile))
 close(f)
 
-@save string(bedfile,"-llasso.jld")
+
 
 # ----------------------------------------------- #
 # penalized logistic model with IHT penalty
@@ -129,7 +129,8 @@ if(success)
     write(f,string(cvout))
     close(f)
 end
-m = min(sum(betaL .!= 0)-1, sum(betaSR .!= 0)-1)
+m = min(sum(betaL .!= 0)-1, sum(betaSR .!= 0)-1,50)
+## 50 from phase transition plot
 df0 = DataFrame()
 for i in 1:m
     output = @time L0_log(X2, y, i)
@@ -139,35 +140,50 @@ end
 ## writing output to file --------------------------------------------
 df = [df df0]
 writetable(outfile,df)
+@save string(bedfile,"-llasso.jld")
+#@load string(bedfile,"-llasso.jld")
 
 ## Now that RCall works in HGCC, we can call:
-include("llasso-post-sel-preparation.jl")
+#include("llasso-post-sel-preparation.jl")
+## no, it does not really work
 
+## ------------------------------------------------------------------
+## Overfitting the data: fitting the logistic model with the candidate
+## SNPs (not great, but we have so little data that we cannot do 
+## data splitting)
 
-## Removed part for RCall because it does not work in HGCC
-# using RCall
-# @rput X
-# @rput y
-# if(resL)
-#     beta_hatL = convert(Array,betaL)[:,1]
-#     @rput beta_hatL
-#     @rput lambdaL
-# end
-# if(resSR)
-#     beta_hatSR = convert(Array,betaSR)[:,1]
-#     @rput beta_hatSR
-#     @rput lambdaSR
-# end
-# @rput bedfile
-# @rput resL
-# @rput resSR
+## We include sex as the only covariate that was significant
+## in the exploration
+cov = readtable("/Users/Clauberry/Documents/gwas/data/22q/22q_files_NEW/justfinalset/22q_all.covariates.txt", separator='\t')
+## sizes don't really match (526 in cov, and 519 in chr), but we
+## ignore this for now as we will use other data
+sex = cov[:Sex][1:519]
 
-# R"""
-# if(resL && !resSR){
-#     save(X,y,beta_hatL,lambdaL,file=paste0(bedfile,".Rda"))
-# }else if(resSR && !resL){
-#     save(X,y, beta_hatSR,lambdaSR,file=paste0(bedfile,".Rda"))
-# }else if(resL && resSR){
-#     save(X,y,beta_hatL,lambdaL, beta_hatSR,lambdaSR,file=paste0(bedfile,".Rda"))
-# }
-# """
+sumbeta = sum(Array(df),2)
+df[:sumbeta] = sumbeta[:,1]
+df[:rownum] = collect(1:1:length(df[:betaL])) ## to keep track of indices
+sort!(df, cols=[:sumbeta], rev=true)
+
+## candidate SNPs, in "kept" indices
+## using 50 because of phase transition plot
+candidate = Array(df[:rownum][1:50])
+dfind = DataFrame(ind=candidate)
+writetable(string(bedfile,".candidate"),dfind)
+Xsub = X[:,candidate]
+y[y.==-1] = 0
+dat = DataFrame(Xsub)
+dat[:y] = y
+dat[:sex] = sex
+
+model1 = glm(allvarsformula(names(dat),:y), dat, Normal(), IdentityLink())
+f = open(string(bedfile,".glm-output"),"w")
+write(f,string(model1))
+close(f)
+
+cc = coef(model1)
+se = stderr(model1)
+zz = cc ./ se
+dat2 = DataFrame(beta=cc,se=se,z=zz,pvalue=2.0 * ccdf.(Normal(), abs.(zz)))
+dat2[:candidate] = push!(unshift!(candidate, 0),0)
+writetable(string(bedfile,".glm"),dat2)
+    
