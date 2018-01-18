@@ -11,5 +11,5 @@ include("llasso-post-sel-functions.jl")
 datafolder = "/Users/Clauberry/Documents/gwas/data/22q/22q_files_NEW/bedfiles/"
 bedfile = "22q-chr22"
 
-saveRdaFile(datafolder, bedfile)
+saveRdaFile(X,y,datafolder,bedfile)
 

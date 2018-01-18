@@ -3,9 +3,11 @@ using SnpArrays, DataFrames, SparseRegression, Distributions, Lasso, IHT
 ## function that reads a bedfile, removes rare variants (by default) and check the missingness
 ## We keep a list of the SNPs that are still in the model
 ## (to be able to give interpretations at the end)
-function readBedfile(datafolder::AbstractString, bedfile::AbstractString; 
+function readBedfile(datafolder::AbstractString, bedfile::AbstractString;
     eliminateRare=true::Bool)
     chr = SnpArray(string(datafolder,bedfile))
+    println("at the beginning of read bedfile")
+    @show size(chr)
     maf, minor_allele, missings_by_snp, missings_by_person = summarize(chr)
     if(eliminateRare)
         info("Eliminating rare variants (MAF<5%)")
@@ -14,12 +16,14 @@ function readBedfile(datafolder::AbstractString, bedfile::AbstractString;
         chr = chr[:, maf .>= 0.05]
     else
         warn("We are not eliminating rare variants (MAF<5%), and this can cause problems in the post selection functions")
-    end 
+    end
     miss = sum(missings_by_snp) / length(chr)
     info("Percentage of missingness in matrix: $(round(miss*100,2))%")
     miss > 0.15 && warn("you have missingness of more than 15%")
+    println("at the end of read bedfile")
+    @show size(chr)
     return chr
-end 
+end
 
 ## function that reads the fam file, and extracts the 6th column (case-control)
 ## and returns it as an Array{Float64}
@@ -30,7 +34,7 @@ function readResponse(datafolder::AbstractString, bedfile::AbstractString)
     y = convert(Array{Float64,1},dat[:,6]) ## assumes 6th column is case-control status
     y = y-1 ##0=controls, 1=cases
     return y
-end 
+end
 
 ## function that fits Lasso, but instead of returning an error, it returns a false if failed
 function fitLLasso(X::AbstractArray, y::AbstractArray;itol = 0.0000001::Float64)
@@ -39,7 +43,7 @@ function fitLLasso(X::AbstractArray, y::AbstractArray;itol = 0.0000001::Float64)
         return true,f
     catch
         return false,nothing
-    end 
+    end
 end
 
 ## fit Lasso function for different tolerance values until it converges
@@ -70,14 +74,14 @@ function getSubsetXY4CV(chr::SnpArray, datafolder::AbstractString, bedfile::Abst
     ## Sample the individuals to fit the model
     ind = sample(1:size(chr,1),nsub,replace=false)
     chrsub = chr[ind,indsnp]
-    Xsub = convert(Matrix{Float64},chrsub,impute=true) ## need to impute for SparseRegression   
+    Xsub = convert(Matrix{Float64},chrsub,impute=true) ## need to impute for SparseRegression
     ## Sample the individuals to predict the response
     nall = collect(1:1:size(chr,1))
     other = setdiff(nall,sort(ind))
     chrother = chr[other,indsnp]
-    Xother = convert(Matrix{Float64},chrother,impute=true)  
+    Xother = convert(Matrix{Float64},chrother,impute=true)
     ## Read in the response
-    y = readResponse(datafolder, bedfile)   
+    y = readResponse(datafolder, bedfile)
     ysub = y[ind]
     yother = y[other]
     return Xsub, Xother, ysub, yother
@@ -104,10 +108,10 @@ end
 ## - rng = seed for random numbers (12345, default)
 ## - nsnps = number of SNPs to sample for speed (10000, default)
 ## returns the df with scores, best lambda, lasso fit
-function chooseLambdaLasso(chr::SnpArray, datafolder::AbstractString, 
-    bedfile::AbstractString; 
+function chooseLambdaLasso(chr::SnpArray, datafolder::AbstractString,
+    bedfile::AbstractString;
     prc=0.5::Number, rng=12345::Int, nsnps=10000::Int)
-    
+
     Xsub, Xother, ysub, yother = getSubsetXY4CV(chr, datafolder, bedfile, prc, rng, nsnps)
     res,f = fitRepeatedLlasso(Xsub, ysub)
     @show f
@@ -148,8 +152,8 @@ end
 ## - rng = seed for random numbers (12345, default)
 ## - nsnps = number of SNPs to sample for speed (10000, default)
 ## returns the best lambda
-function chooseLambdaSparseRegression(chr::SnpArray, datafolder::AbstractString, 
-    bedfile::AbstractString, lambdas::AbstractArray; 
+function chooseLambdaSparseRegression(chr::SnpArray, datafolder::AbstractString,
+    bedfile::AbstractString, lambdas::AbstractArray;
     prc=0.5::Number, rng=12345::Int, nsnps=10000::Int)
 
     Xsub, Xother, ysub, yother = getSubsetXY4CV(chr, datafolder, bedfile, prc, rng, nsnps)
@@ -168,7 +172,7 @@ function chooseLambdaSparseRegression(chr::SnpArray, datafolder::AbstractString,
         catch
             warn("SparseRegression fit did not converge for lambda = $l, will skip it")
             continue
-        end       
+        end
         ## prediting the (1-prc)% of data
         beta = s.β
         score = predictY(Xother,yother,beta)
@@ -186,7 +190,7 @@ function chooseLambdaSparseRegression(chr::SnpArray, datafolder::AbstractString,
 end
 
 ## This function identifies the repeated columns in X
-## It writes a file with column kept index, 
+## It writes a file with column kept index,
 ## followed by the identical column indices that should be excluded
 ## It also returns a vector with the indices to exclude
 function identifyRepeatedColumns(X::AbstractArray, filename::String)
@@ -217,10 +221,15 @@ function identifyRepeatedColumns(X::AbstractArray, filename::String)
     return unique(excluded)
 end
 
+#X0 = deepcopy(X);
+#X = deepcopy(X0);
 function removeRepeatedColumns(X::AbstractArray; filename="indices.txt"::String)
-    excluded = identifyRepeatedColumns(X,filename)
+    excluded = identifyRepeatedColumns(X,filename);
+    @show length(excluded)
     kept = setdiff(1:size(X,2),excluded)
     writetable(string(filename,"-kept"),DataFrame(ind=kept))
+    println("inside remore repeated columns")
+    @show length(kept)
     return X[:,kept]
 end
 
@@ -228,18 +237,23 @@ end
 ## fixit: do we need Float or can Int work?
 ## next fixit: we want to change the functions to avoid this step
 function convertBedfile(chr::SnpArray, datafolder::AbstractString,bedfile::AbstractString)
+    println("at the beginning of convert bedfile, size of chr:")
+    @show size(chr)
     size(chr,2) > 100000 && warn("SnpArray has more than 100k SNPs (after removing rare variants). Conversion to float matrix will be heavy")
     if(size(chr,2) > 200000)
         warn("SnpArray has more than 200k SNPs (after removing rare variants) so we will take only the first 100k for this run")
         chr = chr[:,1:100000]
     end
     y = readResponse(datafolder, bedfile)
-    X = @time convert(Matrix{Float64},chr,impute=true)
+    X = convert(Matrix{Float64},chr,impute=true);
+    @show size(X)
     ## Note that R post selection functions do not allow repeated columns,
     ## we could get rid of the repeated columns with DataFrame, but we want to
     ## keep track of which columns we are eliminating
-    X = removeRepeatedColumns(X, filename=string(bedfile,".indices"))
-    return X,y
+    X2 = removeRepeatedColumns(X, filename=string(bedfile,".indices"));
+    println("inside convert bedfile")
+    @show size(X2)
+    return X2,y
 end
 
 function allvarsformula(nms,resp::Symbol)

@@ -6,17 +6,21 @@ using RCall
 ## Function to read output files from llasso-script.jl
 ## and save an Rda file with the necessary objects for post selection
 ## the name of the Rda file will be bedfile.Rda
-function saveRdaFile(datafolder::AbstractString, bedfile::AbstractString)
+## WARNING: we cannot convert the bedfile inside because the convert function
+## of SnpArrays.jl gives a different X every run
+function saveRdaFile(X::AbstractArray, y::AbstractArray,datafolder::AbstractString, bedfile::AbstractString)
     @rput bedfile
 
-    chr = readBedfile(datafolder, bedfile);
-    X,y = convertBedfile(chr, datafolder,bedfile);
+    #chr = readBedfile(datafolder, bedfile);
+    #X,y = convertBedfile(chr, datafolder,bedfile);
+    @show size(X)
     @rput X
     @rput y
 
 
     ## Reading lambdas:--------------------------------------------------
     logfile = string(bedfile,".log")
+    outfolder = ""
     lines = readlines(string(outfolder,logfile))
     who = String[]
     lambdas = Float64[]
@@ -50,7 +54,8 @@ function saveRdaFile(datafolder::AbstractString, bedfile::AbstractString)
     end
 
     ## Beta coefficients:------------------------------------------------
-    outfolder = "/Users/Clauberry/Dropbox/Documents/gwas/projects/22q_new/llasso/results/test1/"
+    ##outfolder = "/Users/Clauberry/Dropbox/Documents/gwas/projects/22q_new/llasso/results/test1/"
+    outfolder = ""
     outfile = string(bedfile,".beta")
     df = readtable(string(outfolder,outfile));
     obscol = [findfirst(names(df), :betaL),findfirst(names(df), :betaSR)]

@@ -1,7 +1,7 @@
 # To do
-  - copy the llasso script to hgcc again, and modify path; copy covariates data too
-  - run a submit script test again (make sure to delete all previous output files)
-  - modify the scripts so that they take a number (the chromosome) as input, also copy the caucasian data (modify paths in scripts to read this new data); run julia script for all chromosomes: parallelize
+  - submit issue with Hua Zhou that convert creates different matrices each time!
+  - run a submit script test again: either line by line or the whole llasso-submit.sh: check output files
+  - when this works, copy new data and modify scripts to run on new data (careful with covariates part); modify script to parallelize on chromosome number
   - after this, copy back the scripts used and results
 
   - check with rich/jai how to identify in which genes the significant SNPs are
@@ -15,10 +15,18 @@ Later:
 - `llasso-script.jl`: for a given bedfile name, it runs:
   - cross validation with Lasso.jl to find the best lambda
   - cross validation with SparseRegression.jl to find the best lambda
-  - penalized likelihodd with Lasso.jl with best lambda
+  - penalized likelihood with Lasso.jl with best lambda
   - penalized likelihood with SparseRegression.jl with best lambda
   - penalized likelihood with IHT.jl
-  - saves all betas in *.beta file to be read later and interpreted
+## Output files from llasso-script.jl
+  - when reading bedfile, saved in `*.common` the indices of common SNPs kept in the model
+  - when converting to float matrix, we save in `*.indices` the list of columns that are repeated; and in `*.indices-kept` we save the SNPs kept after removing the repeated columns (not allowed in post selection function)
+  - cross validation julia objects saved in `*-crossval.jld`
+  - `*.log` summary of Lasso.jl and SR.jl fit
+  - all betas in `*.beta` file (one row per variable, one column per penalization)
+  - `*-llasso.jld` to save the julia objects
+  - `*.candidate` list of 50 SNPs with highest estimated effect overall penalties; used in the overfit of GLM adjusting for sex: GLM overfit results in `*.glm` and `*.glm-output`.
+  - Note that at the end, we will identify the original SNPs by X[common[kept[i]]], the ith column in X is actually the kept[i] column in X prior to elimination of repeated columns, and the kept[i] column is then the common[kept[i]] in the original bedfile before eliminating rare variants
 - `llasso-post-sel-preparation.jl`: will read the output files from  `llasso-script.jl`, create an Rda file
 - `llasso-post-selection.r`: will run post selection methods in R (still under development)
 - `llasso-interpret.r`: will read the *.beta file created by `llasso-script.jl` and will identify the significant variants (still under development)
@@ -203,3 +211,140 @@ qsub -q b.q llasso-submit.sh
 and I have the same RCall error!
 
 So, I will modify the script to avoid the R part. Also, I will do the overfitting part (not great) of refitting a model only with the candidate SNPs (in lieu of the post selection). This is not great because we are using the same data, but we have so little data (~500) to begin with.
+
+Apparently the problem with RCall can be fixed by using version 0.9.0. But some dependecies force my RCall to be 0.8.1. I can check which packages have RCall as dependency with:
+```julia
+julia> Pkg.dependents("RCall")
+4-element Array{AbstractString,1}:
+ "RLEVectors"    
+ "BioBridgeR"    
+ "GenomicVectors"
+ "PhyloNetworks" 
+
+julia> Pkg.dependents("RLEVectors")
+1-element Array{AbstractString,1}:
+ "GenomicVectors"
+
+julia> Pkg.dependents("BioBridgeR")
+0-element Array{AbstractString,1}
+
+julia> Pkg.dependents("GenomicVectors")
+0-element Array{AbstractString,1}
+
+julia> Pkg.dependents("PhyloNetworks")
+0-element Array{AbstractString,1}
+```
+
+So, I will try to remove these and then re-install RCall:
+```julia
+ Pkg.rm("RLEVectors")    
+ Pkg.rm("BioBridgeR")   
+ Pkg.rm("GenomicVectors")
+ Pkg.rm("PhyloNetworks")
+ Pkg.rm("RCall")
+```
+
+This is very confusing:
+```julia
+julia> Pkg.rm("RLEVectors")
+INFO: Package RLEVectors is not installed
+
+julia> Pkg.rm("BioBridgeR")
+INFO: Package BioBridgeR is not installed
+
+julia> Pkg.rm("GenomicVectors")
+INFO: Package GenomicVectors is not installed
+
+julia> Pkg.rm("PhyloNetworks")
+INFO: Package PhyloNetworks is not installed
+
+julia> Pkg.rm("RCall")
+INFO: Removing AxisArrays v0.2.0
+INFO: Removing CategoricalArrays v0.2.3
+INFO: Removing Combinatorics v0.5.0
+INFO: Removing IntervalSets v0.1.1
+INFO: Removing NamedArrays v0.6.1
+INFO: Removing NullableArrays v0.1.2
+INFO: Removing Nulls v0.1.2
+INFO: Removing Polynomials v0.1.6
+INFO: Removing RCall v0.8.1
+INFO: Removing RangeArrays v0.2.0
+INFO: Package database updated
+```
+But I will add RCall again: `Pkg.add("RCall")`, which still does not work, but now we have a different error:
+```
+julia> using RCall
+INFO: Precompiling module RCall.
+WARNING: Method definition ==(Base.Nullable{S}, Base.Nullable{T}) in module Base at nullable.jl:238 overwritten in module NullableArrays at /home/csolislemus/.julia/v0.6/NullableArrays/src/operators.jl:99.
+ERROR: LoadError: LoadError: Could not load library /sw/hgcc/Pkgs/R/3.4.3/lib64/R/lib/libR.so. Try adding /sw/hgcc/Pkgs/R/3.4.3/lib64/R/lib to the "LD_LIBRARY_PATH" environmental variable and restarting Julia.
+Stacktrace:
+ [1] validate_libR(::String) at /home/csolislemus/.julia/v0.6/RCall/src/setup.jl:15
+ [2] locate_Rhome_libR() at /home/csolislemus/.julia/v0.6/RCall/src/setup.jl:114
+ [3] include_from_node1(::String) at ./loading.jl:569
+ [4] include(::String) at ./sysimg.jl:14
+ [5] include_from_node1(::String) at ./loading.jl:569
+ [6] include(::String) at ./sysimg.jl:14
+ [7] anonymous at ./<missing>:2
+while loading /home/csolislemus/.julia/v0.6/RCall/src/setup.jl, in expression starting on line 121
+while loading /home/csolislemus/.julia/v0.6/RCall/src/RCall.jl, in expression starting on line 41
+ERROR: Failed to precompile RCall to /home/csolislemus/.julia/lib/v0.6/RCall.ji.
+Stacktrace:
+ [1] compilecache(::String) at ./loading.jl:703
+ [2] _require(::Symbol) at ./loading.jl:490
+ [3] require(::Symbol) at ./loading.jl:398
+```
+Viren did something to R, and now everything works. We don't know what he did, he only said that he had to set some permissions on the R lib files.
+
+Now, we need to copy again the `llasso-script.jl` to the cluster, as well as the covariates files, and run a test:
+```
+cd Dropbox/Documents/gwas/projects/22q_new/llasso/scripts
+scp llasso-*.jl csolislemus@hgcc.genetics.emory.edu:/home/csolislemus/22q
+cd Documents/gwas/data/22q/22q_files_NEW/justfinalset
+scp 22q_all.covariates.txt csolislemus@hgcc.genetics.emory.edu:/home/csolislemus/22q
+```
+Now, we need to login to HGCC in an interatice session and modify the paths of the llasso script:
+```
+ssh csolislemus@hgcc.genetics.emory.edu
+cd 22q
+vim llasso-script.jl ##and modify the paths
+```
+
+Now, we can test the llasso-submit.sh line by line (first we did `Pkg.update()`). Also, we need to change the paths of llasso-script.jl.
+```
+ssh csolislemus@hgcc.genetics.emory.edu
+qlogin -q i.q@node09
+screen -S julia
+module load julia
+module load R
+export LD_LIBRARY_PATH=`R RHOME`/lib
+julia llasso-script.jl 
+```
+Now, we will check the output files:
+```
+ssh csolislemus@hgcc.genetics.emory.edu
+qlogin -q i.q@node09
+screen -r julia
+```
+Sadly, screen was killed, not sure why. Will look at the files anyway.
+There is something strange:
+```
+node09:[22q] % wc -l 22q-chr22.beta 
+39455 22q-chr22.beta
+node09:[22q] % wc -l 22q-chr22.indices-kept 
+39436 22q-chr22.indices-kept
+```
+There are 39453 (without column names and intercept) beta coefficients, but only 39435 SNPs kept. There is a mismatch here, so I added a bunch of prints to `llasso-script.jl` and I am re-running to see what dimensions we have in the matrices and beta vectors. I ran `test3` with added prints, but still cannot identify why the discrepancy. Need more prints. The problem is with `identifyRepeatedColumns` that identifies different columns the second time: 
+- first time: excluded 5230 columns
+- second time (in post selection function): excluded 5248
+So, `test3` has the excluded columns from post selection, and then, I will run `test4` without the the post selection functions, and compare these files.
+
+It is the convert function that creates differente matrices!!!
+```julia
+julia> X = convert(Matrix{Float64},chr,impute=true);
+julia> X2 = convert(Matrix{Float64},chr,impute=true);
+julia> all(X .== X2)
+false
+```
+Maybe this is the `impute` option, need to check this with Hua Zhou. So, we modified the `saveRda` function to use X and y as input, and need to re-check the output files.
+
+Now, we will copy the new scripts to HGCC, and run one last test run over there.

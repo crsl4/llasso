@@ -6,6 +6,7 @@
 # - can we modify SnpArray so that we do not have to convert to matrix?
 # Claudia October 2017
 
+tic()
 include("llasso-functions.jl")
 using JLD
 datafolder = "/Users/Clauberry/Documents/gwas/data/22q/22q_files_NEW/bedfiles/"
@@ -51,6 +52,8 @@ info("Cleaning up data for penalized likelihood")
 ## For chromosome 22, we have 45k common variants, so we can convert the
 ## whole SnpArray
 X,y = convertBedfile(chr, datafolder,bedfile);
+println("after convert bedfile")
+@show size(X)
 
 df = DataFrame()
 ## now we run Lasso.jl, which will fit by default 100 models
@@ -72,6 +75,7 @@ if(resL)
     lambdaL = fall.λ[ind][1]
     interceptL = fall.b0[ind][1]
     unshift!(betaL,interceptL)
+    @show length(betaL)
     ## writing output
     yy = convert(Array,betaL)
     df[:betaL] = yy[:,1]
@@ -144,12 +148,12 @@ writetable(outfile,df)
 #@load string(bedfile,"-llasso.jld")
 
 ## Now that RCall works in HGCC, we can call:
-#include("llasso-post-sel-preparation.jl")
-## no, it does not really work
+include("llasso-post-sel-preparation.jl")
 
+println("starts overfitting")
 ## ------------------------------------------------------------------
 ## Overfitting the data: fitting the logistic model with the candidate
-## SNPs (not great, but we have so little data that we cannot do 
+## SNPs (not great, but we have so little data that we cannot do
 ## data splitting)
 
 ## We include sex as the only covariate that was significant
@@ -186,4 +190,8 @@ zz = cc ./ se
 dat2 = DataFrame(beta=cc,se=se,z=zz,pvalue=2.0 * ccdf.(Normal(), abs.(zz)))
 dat2[:candidate] = push!(unshift!(candidate, 0),0)
 writetable(string(bedfile,".glm"),dat2)
-    
+
+a=toc()
+f = open(logfile,"w")
+write(f,string("\nElapsed time: ",a," seconds"))
+close(f)
