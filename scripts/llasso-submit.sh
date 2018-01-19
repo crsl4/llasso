@@ -1,6 +1,8 @@
 #!/bin/sh
+#$ -t 1-23
 
-# Initial submit file for llasso-script.jl
+# Submit file for llasso-script.jl for 
+# chromosomes 1-23
 
 module load R
 module load julia
@@ -22,7 +24,7 @@ fi
 cp ${PRJDIR}/* ${TMPDIR}
 cd ${TMPDIR}
 
-julia ${TMPDIR}/llasso-script.jl
+julia ${TMPDIR}/llasso-script.jl $SGE_TASK_ID
 
 /bin/rm ${TMPDIR}/*.fam
 /bin/rm ${TMPDIR}/*.bim

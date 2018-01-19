@@ -4,13 +4,20 @@
 # - change the post selection julia functions to the ones in R CRAN
 #   now in llasso-post-selection.r
 # - can we modify SnpArray so that we do not have to convert to matrix?
+# Run in terminal: julia llasso-script.jl chrnum
 # Claudia October 2017
+
+if(isempty(ARGS))
+    chrnum = 22
+else
+    chrnum = parse(Int, ARGS[1]);
+end
 
 tic()
 include("llasso-functions.jl")
 using JLD
 datafolder = "/Users/Clauberry/Documents/gwas/data/22q/22q_files_NEW/bedfiles/"
-bedfile = "22q-chr22"
+bedfile = string("22q_caucasian-chr",chrnum)
 ## to save output
 logfile = string(bedfile,".log")
 outfile = string(bedfile,".beta")
@@ -65,7 +72,7 @@ lambdaL = nothing
 interceptL = nothing
 if(resL)
     @show fall
-    ind = find(x->isapprox(x,bestlL,atol=0.001),fall.λ)
+    ind = find(x->isapprox(x,bestlL[1],atol=0.001),fall.λ)
     isempty(ind) && warn("We could not find the Lasso model with the best lambda")
     if(length(ind)>1)
         ind = ind[end]
@@ -158,10 +165,13 @@ println("starts overfitting")
 
 ## We include sex as the only covariate that was significant
 ## in the exploration
-cov = readtable("/Users/Clauberry/Documents/gwas/data/22q/22q_files_NEW/justfinalset/22q_all.covariates.txt", separator='\t')
+#cov = readtable("/Users/Clauberry/Documents/gwas/data/22q/22q_files_NEW/justfinalset/22q_all.covariates.txt", separator='\t')
+cov = readtable("/Users/Clauberry/Dropbox/Documents/gwas/projects/22q_new/caucasian-ind/22q_caucasian_outliers_removed.cov", separator=' ')
 ## sizes don't really match (526 in cov, and 519 in chr), but we
 ## ignore this for now as we will use other data
-sex = cov[:Sex][1:519]
+##sex = cov[:Sex][1:519]
+
+##fixit: add here warning if cov and X do not have same number of rows
 
 sumbeta = sum(Array(df),2)
 df[:sumbeta] = sumbeta[:,1]
@@ -177,7 +187,7 @@ Xsub = X[:,candidate]
 y[y.==-1] = 0
 dat = DataFrame(Xsub)
 dat[:y] = y
-dat[:sex] = sex
+dat[:sex] = cov[:Sex]
 
 model1 = glm(allvarsformula(names(dat),:y), dat, Normal(), IdentityLink())
 f = open(string(bedfile,".glm-output"),"w")

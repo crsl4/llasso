@@ -348,3 +348,77 @@ false
 Maybe this is the `impute` option, need to check this with Hua Zhou. So, we modified the `saveRda` function to use X and y as input, and need to re-check the output files.
 
 Now, we will copy the new scripts to HGCC, and run one last test run over there.
+```shell
+cd Dropbox/Documents/gwas/projects/22q_new/llasso/scripts/
+scp llasso-* csolislemus@hgcc.genetics.emory.edu:/home/csolislemus/22q
+```
+Now, we need to change the paths, and re-run:
+```shell
+ssh csolislemus@hgcc.genetics.emory.edu
+```
+Need to change paths in `llasso-script.jl` and `llasso-post-sel-preparation.jl`.
+Now let's run `llasso-script.jl` in a screen first:
+```shell
+qlogin -q i.q@node09
+screen -S julia
+module load julia
+module load R
+export LD_LIBRARY_PATH=`R RHOME`/lib
+julia llasso-script.jl 
+```
+Output files are fine, and now let's check that this works:
+```shell
+qsub -q b.q -cwd -j y 22q/llasso-submit.sh
+qstat
+```
+All output files are great! 
+
+Now, we need to copy the new `llasso-script.jl` that uses the caucasian data, and `llasso-post-sel-preparation.jl` that does not re-call functions/variables not needed when running inside `llasso-script.jl`:
+```shell
+cd Dropbox/Documents/gwas/projects/22q_new/llasso/scripts/
+scp llasso-script.jl csolislemus@hgcc.genetics.emory.edu:/home/csolislemus/22q
+scp llasso-post-sel-preparation.jl csolislemus@hgcc.genetics.emory.edu:/home/csolislemus/22q
+```
+
+Now, we need to copy the caucasian data to HGCC:
+```shell
+cd Documents/gwas/data/22q/22q_files_NEW/bedfiles
+scp 22q_caucasian* csolislemus@hgcc.genetics.emory.edu:/home/csolislemus/22q
+```
+This takes a lot of time!
+
+We also need to copy the covariance file:
+```shell
+cd Dropbox/Documents/gwas/projects/22q_new/caucasian-ind
+scp 22q_caucasian_outliers_removed.cov csolislemus@hgcc.genetics.emory.edu:/home/csolislemus/22q
+```
+
+Now, we need to change the paths in `llasso-script.jl` again, and run a test in a screen:
+```shell
+ssh csolislemus@hgcc.genetics.emory.edu
+qlogin -q i.q@node09
+screen -S julia
+module load julia
+module load R
+export LD_LIBRARY_PATH=`R RHOME`/lib
+julia llasso-script.jl 
+```
+Output files look good:
+```
+hgcc:node00:[22q] % wc -l 22q_caucasian-chr22.beta
+36611 22q_caucasian-chr22.beta
+hgcc:node00:[22q] % wc -l 22q_caucasian-chr22.indices-kept 
+36610 22q_caucasian-chr22.indices-kept
+hgcc:node00:[22q] % head 22q_caucasian-chr22.glm
+"beta","se","z","pvalue","candidate"
+0.3486048689854033,0.14155188773222402,2.4627355704705596,0.013788156322897429,0
+-0.028288059628287236,0.059938367684743143,-0.47195245251044343,0.6369607273200409,33083
+-0.0722608436323119,0.038572242469530026,-1.873389748843201,0.06101458455034256,33028
+0.020641250914838358,0.051859974817971714,0.3980189151130339,0.6906162429351607,3858
+0.04451223941811363,0.06344530576601229,0.7015844416019645,0.4829383571418538,34107
+-0.006307154473357117,0.04224491232793794,-0.14929974110008956,0.8813171195556553,19358
+-0.002178286382866881,0.03389137444418923,-0.0642725890758424,0.9487531790634641,6765
+-0.08172171452925556,0.04972404080920658,-1.6435050973195342,0.10027847157939856,30749
+-0.21242255814698008,0.05929524167684909,-3.582455390006736,0.00034037975641165876,10366
+```
+**aqui voy** run for all chromosomes: call this inside an array job 1-23
