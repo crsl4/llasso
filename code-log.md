@@ -1,11 +1,11 @@
 # To do
   - submit issue with Hua Zhou that convert creates different matrices each time!
-  - run a submit script test again: either line by line or the whole llasso-submit.sh: check output files
-  - when this works, copy new data and modify scripts to run on new data (careful with covariates part); modify script to parallelize on chromosome number
-  - after this, copy back the scripts used and results
+  - submit issue with Kevin that all betas are negative with IHT
+  - Where we are: we ran lasso for all chromosomes 1-23 for 22q data. We want to compare to existing hits from single regression
+    - chr2,7,14,18 failed; chr5,19 did one part only
+    - is there something strange in the code that all plots look alike?
 
   - check with rich/jai how to identify in which genes the significant SNPs are
-  - we need to add confounding covariates at some point: sex, age? not sure, as they are not significant
 
 Later:
   - meet with Rich to learn about amazon web
@@ -421,4 +421,55 @@ hgcc:node00:[22q] % head 22q_caucasian-chr22.glm
 -0.08172171452925556,0.04972404080920658,-1.6435050973195342,0.10027847157939856,30749
 -0.21242255814698008,0.05929524167684909,-3.582455390006736,0.00034037975641165876,10366
 ```
-**aqui voy** run for all chromosomes: call this inside an array job 1-23
+
+I modified the `llasso-submit.sh` to run an array, so I need to copy again to HGCC:
+```shell
+scp llasso-submit.sh csolislemus@hgcc.genetics.emory.edu:/home/csolislemus/22q
+```
+And now we run in HGCC (fingers crossed!)
+```shell
+ssh csolislemus@hgcc.genetics.emory.edu
+qsub -q b.q -cwd -j y 22q/llasso-submit.sh
+## Your job-array 246684.1-23:1 ("llasso-submit.sh") has been submitted
+
+hgcc:node00:[~] % qstat
+job-ID  prior   name       user         state submit/start at     queue                          slots ja-task-ID 
+-----------------------------------------------------------------------------------------------------------------
+ 246684 0.10417 llasso-sub csolislemus  r     01/19/2018 16:53:14 b.q@node02.local                   1 1
+ 246684 0.05208 llasso-sub csolislemus  r     01/19/2018 16:53:14 b.q@node06.local                   1 2
+ 246684 0.03472 llasso-sub csolislemus  r     01/19/2018 16:53:14 b.q@node02.local                   1 3
+ 246684 0.02604 llasso-sub csolislemus  r     01/19/2018 16:53:14 b.q@node02.local                   1 4
+ 246684 0.02083 llasso-sub csolislemus  r     01/19/2018 16:53:14 b.q@node02.local                   1 5
+ 246684 0.01736 llasso-sub csolislemus  r     01/19/2018 16:53:14 b.q@node02.local                   1 6
+ 246684 0.01488 llasso-sub csolislemus  r     01/19/2018 16:53:14 b.q@node02.local                   1 7
+ 246684 0.01302 llasso-sub csolislemus  r     01/19/2018 16:53:14 b.q@node02.local                   1 8
+ 246684 0.01157 llasso-sub csolislemus  r     01/19/2018 16:53:14 b.q@node09.local                   1 9
+ 246684 0.01042 llasso-sub csolislemus  r     01/19/2018 16:53:14 b.q@node02.local                   1 10
+ 246684 0.00947 llasso-sub csolislemus  r     01/19/2018 16:53:14 b.q@node02.local                   1 11
+ 246684 0.00868 llasso-sub csolislemus  r     01/19/2018 16:53:14 b.q@node07.local                   1 12
+ 246684 0.00801 llasso-sub csolislemus  r     01/19/2018 16:53:14 b.q@node02.local                   1 13
+ 246684 0.00744 llasso-sub csolislemus  r     01/19/2018 16:53:14 b.q@node09.local                   1 14
+ 246684 0.00694 llasso-sub csolislemus  r     01/19/2018 16:53:14 b.q@node02.local                   1 15
+ 246684 0.00651 llasso-sub csolislemus  r     01/19/2018 16:53:14 b.q@node05.local                   1 16
+ 246684 0.00613 llasso-sub csolislemus  r     01/19/2018 16:53:14 b.q@node08.local                   1 17
+ 246684 0.00579 llasso-sub csolislemus  r     01/19/2018 16:53:14 b.q@node02.local                   1 18
+ 246684 0.00548 llasso-sub csolislemus  r     01/19/2018 16:53:14 b.q@node02.local                   1 19
+ 246684 0.00521 llasso-sub csolislemus  r     01/19/2018 16:53:14 b.q@node02.local                   1 20
+ 246684 0.00496 llasso-sub csolislemus  r     01/19/2018 16:53:14 b.q@node02.local                   1 21
+ 246684 0.00473 llasso-sub csolislemus  r     01/19/2018 16:53:14 b.q@node02.local                   1 22
+ 246684 0.00453 llasso-sub csolislemus  r     01/19/2018 16:53:14 b.q@node04.local                   1 23
+```
+
+Now we want to check if all chromosomes run:
+```shell
+ssh csolislemus@hgcc.genetics.emory.edu
+```
+We moved the bed,bim,fam,jld files outside of 22q, and copied inside the `output-screen` files. Now we want to copy all the results to Dropbox:
+```shell
+cd Dropbox/Documents/gwas/projects/22q_new/llasso/results/hgcc/
+scp -r csolislemus@hgcc.genetics.emory.edu:/home/csolislemus/22q/* .
+```
+Later in HGCC, I moved all the output files to the folder `output` and left only the data files outside.
+Now, we are using `llasso-interpret.r` to plot the results.
+
+**Warning** There is a bug in IHT because all the betas are negative! Need to email Kevin.

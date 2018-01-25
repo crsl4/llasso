@@ -1,0 +1,76 @@
+\documentclass[11pt]{article}
+
+\usepackage{fullpage}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{graphicx}
+\usepackage{subfigure}
+\usepackage{ dsfont }
+\usepackage{color, colortbl} %color table
+\usepackage[dvipsnames]{xcolor}
+%\usepackage{xcolor}
+\usepackage{ mathrsfs }
+\usepackage{ mathtools }
+\usepackage{hyperref}
+\usepackage[normalem]{ulem}
+%\usepackage{cite}
+\usepackage[round]{natbib}
+\usepackage{caption}
+\usepackage{array}
+\usepackage{comment}
+%\usepackage{bbm} % indicator
+
+% fixed size column:
+\newcolumntype{L}[1]{>{\raggedright\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
+
+\bibliographystyle{mbe} %needs mbe.bst
+
+\newcommand{\claudia}[2]{\sout{#1}\textcolor{magenta}{#2}}
+\newcommand{\missing}[1]{\textit{\textcolor{red}{#1}}} % for comments to be removed
+
+\colorlet{LightNavyBlue}{White!80!NavyBlue}
+\colorlet{LightPurple}{White!80!Purple}
+\colorlet{LightGreen}{White!80!Green}
+\colorlet{LightOrange}{White!80!Orange}
+
+%\setlength{\parindent}{2em}
+\setlength{\parskip}{0.5em}
+%\renewcommand{\baselinestretch}{1.1}
+
+\theoremstyle{definition}
+\newtheorem{mydef}{Definition}
+
+\title{22q LASSO results}
+\author{CSL}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{figure}[ht]
+\includegraphics[scale=0.5]{../results/hgcc/22q_caucasian-chr1.pdf}
+\includegraphics[scale=0.5]{../results/hgcc/22q_caucasian-chr3.pdf}
+\includegraphics[scale=0.5]{../results/hgcc/22q_caucasian-chr4.pdf}
+\includegraphics[scale=0.5]{../results/hgcc/22q_caucasian-chr6.pdf}
+\includegraphics[scale=0.5]{../results/hgcc/22q_caucasian-chr8.pdf}
+\includegraphics[scale=0.5]{../results/hgcc/22q_caucasian-chr9.pdf}\\
+\includegraphics[scale=0.5]{../results/hgcc/22q_caucasian-chr10.pdf}
+\includegraphics[scale=0.5]{../results/hgcc/22q_caucasian-chr11.pdf}
+\includegraphics[scale=0.5]{../results/hgcc/22q_caucasian-chr12.pdf}
+\includegraphics[scale=0.5]{../results/hgcc/22q_caucasian-chr13.pdf}
+\includegraphics[scale=0.5]{../results/hgcc/22q_caucasian-chr15.pdf}
+\includegraphics[scale=0.5]{../results/hgcc/22q_caucasian-chr16.pdf}\\
+\includegraphics[scale=0.5]{../results/hgcc/22q_caucasian-chr17.pdf}
+\includegraphics[scale=0.5]{../results/hgcc/22q_caucasian-chr20.pdf}
+\includegraphics[scale=0.5]{../results/hgcc/22q_caucasian-chr21.pdf}
+\includegraphics[scale=0.5]{../results/hgcc/22q_caucasian-chr22.pdf}
+\includegraphics[scale=0.5]{../results/hgcc/22q_caucasian-chr23.pdf}
+\caption{SNP effects for different chromosomes in the 22q deletion
+  dataset. Different colors (red/blue) represent different tuning
+  parameters in LASSO penalization.}
+\end{figure}
+
+\end{document}
+
+
