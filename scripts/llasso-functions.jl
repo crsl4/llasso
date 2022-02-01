@@ -256,6 +256,7 @@ function convertBedfile(chr::SnpArray, datafolder::AbstractString,bedfile::Abstr
     return X2,y
 end
 
+## Bates
 function allvarsformula(nms,resp::Symbol)
     rpos = findfirst(nms,resp) ## response position
     if iszero(rpos)

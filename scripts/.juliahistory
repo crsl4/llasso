@@ -1,0 +1,37 @@
+include("llasso-script.jl")
+quit()
+include("llasso-script.jl")
+include("llasso-script.jl")
+include("llasso-script.jl")
+quit()
+include("llasso-script.jl")
+include("llasso-script.jl")
+include("llasso-script.jl")
+quit()
+include("llasso-script.jl")
+quit()
+include("llasso-script.jl")
+include("llasso-script.jl")
+include("llasso-script.jl")
+X
+i=1
+y[i]
+y[i+1:end]
+ind
+j=1
+all(X[:,i] .== X[:,ind[j]+i])
+sum(X[:,i])
+sum(X[:,ind[j]+i])
+X[:,i]
+X[:,ind[j]+i]
+X0=deepcopy(X)
+filename="indices.txt"
+excluded2=deepcopy(excluded)
+all(excluded .== excluded2)
+length(kept)
+quit()
+X0=deepcopy(X)
+filename="indices.txt"
+X2 = convert(Matrix{Float64},chr,impute=true);
+all(X .== X2)
+quit()
